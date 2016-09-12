@@ -12,6 +12,7 @@
   "dependencies": {
     "cheerio": "^0.22.0",
     "request": "^2.74.0",
+    "tress": "^1.0.3",
     "winston": "^2.2.0"
   }
 }
