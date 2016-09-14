@@ -39,30 +39,31 @@ function parseSites(URL, callback) {
                 var value = function(data){
                     var arr = data.match(/:\s[\wа-я-]+/gi);
                     arr.forEach(function(element){
-                        element = element.replace(/:\s/g, '')
+                        element = element.slice(0, 2);
                     })
                     return arr;
                 }
                 if (key!=null && value!=null) {
                     for (i=0; i < key.length; i++) {
-                        edition[key[i]] = value(data)[i];
+                        edition[key[i]] = value(data)[i].replace(/:\s/g, '');
                     }
                 }
                 return edition;
             };
+            //collect book cover
+            // here goes magic
             // create object with all information about book
             var book = {
                   bookname: bookname,
                   author: author,
                   genre: genre,
-                  data: editionObject(editionData),
-                  description: description
+                  year: editionObject(editionData)['издания:'],
+                  text: description
             }
             var urls = [];
             var url = $('div.title>a').each(function(){
                 var url = resolve(URL, $(this).attr('href'));
                 var link = url.match(/^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})(\/book\/\d+)*\/?$/)
-                //log.emerg(link);
                 if (link!=null) {
                     urls.push(link[0])
                 }
@@ -81,7 +82,7 @@ var q = tress( function(url, callback){
         //notification of new added book
         log.notice('new book: '+book.bookname)
         //заглушка
-        if (q.finished.length < 3) {
+        if (q.finished.length < 30) {
             //add urls to queue
             q.push(urls, function (err) {
                 if (err) throw err;
@@ -91,7 +92,7 @@ var q = tress( function(url, callback){
     });
     callback();
 //concurency
-}, -5000);
+}, -10000);
 
 //write to file when queue is empty
 q.drain = function (){
