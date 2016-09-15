@@ -1,9 +1,9 @@
 var fs = require("fs");
-var cheerio = require("cheerio");
 var tress = require('tress');
-log = require("./libs/logs")(module);
+var log = require("./libs/logs")(module);
+var request = require("request");
 var Nightmare = require('nightmare');
-// var Swiftly = require('nightmare-swiftly');
+
 
 var URL = 'https://www.livelib.ru/book/1000223426'
 var results = [];
@@ -18,7 +18,7 @@ function writeData(file, text) {
         log.info('complete adding new item to: '+file);
     });
 };
-// collect information from page
+// collect information from pagegit status
 function collectInformation() {
     var bookname = $('h1#book-title').text();
     var author = $('.author-name[itemprop="author"]').text();
@@ -47,15 +47,15 @@ function collectInformation() {
         return edition;
     };
     //collect book cover
-    // here goes magic
-
+    var bookimage = $('#main-image-book').attr('src');
     // create object with all information about book
     var book = {
           bookname: bookname,
           author: author,
           genre: genre,
           year: editionObject(editionData)['издания:'],
-          text: description
+          text: description,
+          bookimage: bookimage
     }
     var urls = [];
     var url = $('div.title>a').each(function(){
@@ -80,7 +80,7 @@ function crawlSite(url, callback) {
     //call new nightmare object
     nightmare
         .viewport(800, 600)
-        .useragent("Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/38.0.2125.111 Safari/537.36")
+        .useragent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/52.0.2743.116 Safari/537.36')
         .goto(url)
         .wait()
         .inject('js', 'jquery.slim.min.js')
@@ -93,16 +93,29 @@ function crawlSite(url, callback) {
             callback(result);
         })
         .catch(function (error) {
-            console.error('Search failed:', error);
+            log.error('Search failed:', error);
         });
+}
+
+function sendBook(book) {
+    // get bookcover by src
+    book.bookimage = request(book.bookimage);
+    //send new book to Polka
+    request.post({url:'http://localhost:8000/addbook', formData: book}, function(err, httpResponse, body) {
+      if (err) {
+        return log.error('upload failed:', err);
+      }
+      log.alert('Upload successful!  Server responded with:', body);
+    });
 }
 
 var q = tress(function (url, callback) {
         crawlSite(url, function(result){
-            results.push(result.book);
+            sendBook(result.book);
+            //results.push(result.book);
             log.notice('new book: '+result.book.bookname)
             // заглушка
-            if (q.finished.length < 5) {
+            if (q.finished.length < 50) {
                 q.push(result.urls, function (err) {
                     if (err) throw err;
                     log.info('urls: '+result.urls.join('\n'));
