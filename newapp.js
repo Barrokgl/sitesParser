@@ -3,9 +3,17 @@ var tress = require('tress');
 var log = require("./libs/logs")(module);
 var request = require("request");
 var Nightmare = require('nightmare');
+var nightmare = Nightmare({
+    dock: true,
+    openDevTools: {
+        mode: 'detach'
+    },
+    // use if you want to see process
+     show: true
+ });
 
 
-var URL = 'https://www.livelib.ru/book/1000223426'
+var URL = 'https://www.livelib.ru/book/1000475384'
 var results = [];
 
 //wrtite results to file
@@ -20,9 +28,12 @@ function writeData(file, text) {
 };
 // collect information from pagegit status
 function collectInformation() {
+    // $('#column-absolute').remove();
+    // $('#oroak2647arts17').remove();
     var bookname = $('h1#book-title').text();
     var author = $('.author-name[itemprop="author"]').text();
-    var description = $('[itemprop="description"]').text();
+    //var description = $('[itemprop="description"]').text();
+    var description = $('#contentwrapper > div:nth-child(3) > div:nth-child(1) > div.column-670.subcontainer > div.version4 > div:nth-child(2) > div.column-430 > div:nth-child(2)').text();
     var genre = $('li.standart').text();
     var editionData = $('div.edition-data').text().replace(/\s{2,}/g, ' ')
       .replace(/\r\n+|\r+|\n+/g, '');
@@ -65,30 +76,33 @@ function collectInformation() {
             urls.push(link[0])
         }
     })
+    // console.log('book: '+book);
+    // console.log('urls: '+urls);
+
     var result = {
         book: book,
         urls: urls
     }
+    // console.log(result);
     return result;
 }
 
 function crawlSite(url, callback) {
-    var nightmare = Nightmare(
-        // use if you want to see process
-        //{ show: true }
-    );
+
     //call new nightmare object
     nightmare
         .viewport(800, 600)
         .useragent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/52.0.2743.116 Safari/537.36')
         .goto(url)
         .wait()
+        .click('a.datasection-link')
+        .wait(2000)
         .inject('js', 'jquery.slim.min.js')
         .evaluate(
             //insert our script on page
             collectInformation
         )
-        .end()
+        // .wait(4000)
         .then(function (result) {
             callback(result);
         })
@@ -111,6 +125,7 @@ function sendBook(book) {
 
 var q = tress(function (url, callback) {
         crawlSite(url, function(result){
+            console.log(result);
             sendBook(result.book);
             //results.push(result.book);
             log.notice('new book: '+result.book.bookname)
@@ -128,7 +143,7 @@ var q = tress(function (url, callback) {
 //write to file when queue is empty
 q.drain = function (){
     log.warning('done!')
-    writeData('./data.json', results);
+    //writeData('./data.json', results);
 }
 
 // errrrr
